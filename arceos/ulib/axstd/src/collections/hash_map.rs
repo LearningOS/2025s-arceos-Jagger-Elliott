@@ -1,8 +1,10 @@
 extern crate alloc;
+extern crate axalloc;
 
 use alloc::vec::Vec;
 use alloc::vec;
 use alloc::string::String;
+
 
 const DEFAULT_CAPACITY: usize = 55000;
 pub struct HashMap<String, V> {
