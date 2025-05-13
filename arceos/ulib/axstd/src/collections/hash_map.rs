@@ -2,24 +2,29 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 use alloc::vec;
+use alloc::string::String;
 
 const DEFAULT_CAPACITY: usize = 55000;
-pub struct HashMap<K, V> {
-    buckets: Vec<Option<(K, V)>>,
+pub struct HashMap<String, V> {
+    buckets: Vec<Option<(String, V)>>,
 }
 
-impl<K: PartialEq + Clone, V: Clone> HashMap<K, V> {
+impl<V: Clone> HashMap<String, V> {
     pub fn new() -> Self {
         Self {
             buckets: vec![None; DEFAULT_CAPACITY],
         }
     }
 
-    fn hash(&self, k: &K) -> usize {
-        unsafe {*(k as *const _ as *const usize)}
+    fn hash(&self, k: &String) -> usize {
+        let mut hash = 0usize;
+        for byte in k.bytes() {
+            hash = hash.wrapping_shl(5) ^ hash.wrapping_shr(2) ^ (byte as usize);
+        }
+        hash
     }
 
-    pub fn insert(&mut self, key: K, value: V) {
+    pub fn insert(&mut self, key: String, value: V) {
         let mut idx = self.hash(&key) % self.buckets.len();
 
         loop {
@@ -39,7 +44,7 @@ impl<K: PartialEq + Clone, V: Clone> HashMap<K, V> {
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get(&self, key: &String) -> Option<&V> {
         let mut idx = self.hash(&key) % self.buckets.len();
 
         loop {
@@ -51,7 +56,7 @@ impl<K: PartialEq + Clone, V: Clone> HashMap<K, V> {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
+    pub fn iter(&self) -> impl Iterator<Item = &(String, V)> {
         self.buckets.iter().filter_map(|item| item.as_ref())
     }
 }
