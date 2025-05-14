@@ -1,5 +1,6 @@
 #![no_std]
 
+
 use core::ptr::NonNull;
 
 use allocator::{AllocError, BaseAllocator, ByteAllocator, PageAllocator};
@@ -18,16 +19,22 @@ use allocator::{AllocError, BaseAllocator, ByteAllocator, PageAllocator};
 /// When it goes down to ZERO, free bytes-used area.
 /// For pages area, it will never be freed!
 ///
-pub struct EarlyAllocator {
+pub struct EarlyAllocator<const PAGE_SIZE: usize> {
     start: usize,
     end: usize,
     count: usize,
     byte_pos: usize,
     page_pos: usize,
-    page_count: usize,
 }
 
-impl EarlyAllocator {
+impl<const PAGE_SIZE: usize> EarlyAllocator<PAGE_SIZE> {
+
+    pub const fn new() -> Self {
+        Self {
+            start: 0, end: 0, count: 0,
+            byte_pos: 0, page_pos: 0,
+        }
+    }
     fn align_up(&self, addr: usize, align: usize) -> usize {
         assert!(align.is_power_of_two(), "align must be a power of 2");
         (addr + align - 1) & !(align - 1)
@@ -39,14 +46,13 @@ impl EarlyAllocator {
     }
 }
 
-impl BaseAllocator for EarlyAllocator {
+impl<const PAGE_SIZE: usize> BaseAllocator for EarlyAllocator<PAGE_SIZE> {
     fn init(&mut self, start: usize, size: usize) {
         self.start = start;
         self.end = start + size;
         self.count = 0;
         self.byte_pos = start;
         self.page_pos = self.end;
-        self.page_count = 0;
     }
 
     fn add_memory(&mut self, _start: usize, size: usize) -> allocator::AllocResult {
@@ -54,7 +60,7 @@ impl BaseAllocator for EarlyAllocator {
     }
 }
 
-impl ByteAllocator for EarlyAllocator {
+impl<const PAGE_SIZE: usize> ByteAllocator for EarlyAllocator<PAGE_SIZE> {
     fn alloc(
         &mut self,
         layout: core::alloc::Layout,
@@ -90,37 +96,36 @@ impl ByteAllocator for EarlyAllocator {
     }
 }
 
-impl PageAllocator for EarlyAllocator {
-    const PAGE_SIZE: usize = 4096;
+impl<const PAGE_SIZE: usize> PageAllocator for EarlyAllocator<PAGE_SIZE> {
+    const PAGE_SIZE: usize = PAGE_SIZE;
 
     fn alloc_pages(
         &mut self,
         num_pages: usize,
         align_pow2: usize,
     ) -> allocator::AllocResult<usize> {
-        assert_eq!(align_pow2 % PAGE_SIZE, 0);
         let start = self.align_down(self.page_pos, align_pow2);
-        let end = start - num_pages * EarlyAllocator::PAGE_SIZE;
+        let end = start - num_pages * PAGE_SIZE;
 
         if end < self.byte_pos {
             return Err(AllocError::NoMemory);
         } else {
             self.page_pos = end;
-            return NonNull::new(end as *mut usize).ok_or(AllocError::NoMemory);
+            return Ok(start);
         }
     }
 
     fn dealloc_pages(&mut self, _pos: usize, _num_pages: usize) {}
 
     fn total_pages(&self) -> usize {
-        (self.end - self.start) / EarlyAllocator::PAGE_SIZE
+        (self.end - self.start) / PAGE_SIZE
     }
 
     fn used_pages(&self) -> usize {
-        (self.end - self.page_pos) / EarlyAllocator::PAGE_SIZE
+        (self.end - self.page_pos) / PAGE_SIZE
     }
 
     fn available_pages(&self) -> usize {
-        (self.page_pos - self.byte_pos) / EarlyAllocator::PAGE_SIZE
+        (self.page_pos - self.byte_pos) / PAGE_SIZE
     }
 }
