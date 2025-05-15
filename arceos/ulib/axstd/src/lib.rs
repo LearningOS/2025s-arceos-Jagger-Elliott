@@ -53,6 +53,12 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+#[cfg(not(feature = "alt_alloc"))]
+extern crate axalloc;
+
+#[cfg(feature = "alt_alloc")]
+extern crate alt_axalloc;
+
 #[cfg(feature = "alloc")]
 #[doc(no_inline)]
 pub use alloc::{boxed, format, string, vec};

@@ -28,11 +28,13 @@ pub struct EarlyAllocator<const PAGE_SIZE: usize> {
 }
 
 impl<const PAGE_SIZE: usize> EarlyAllocator<PAGE_SIZE> {
-
     pub const fn new() -> Self {
         Self {
-            start: 0, end: 0, count: 0,
-            byte_pos: 0, page_pos: 0,
+            start: 0,
+            end: 0,
+            count: 0,
+            byte_pos: 0,
+            page_pos: 0,
         }
     }
     fn align_up(&self, addr: usize, align: usize) -> usize {

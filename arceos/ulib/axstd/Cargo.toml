@@ -82,3 +82,4 @@ axerrno = "0.1"
 kspin = "0.1"
 
 axalloc = { workspace = true }
+alt_axalloc = { workspace = true }
