@@ -4,6 +4,7 @@ use alloc::{string::String, vec::Vec};
 
 use axfs_vfs::{VfsDirEntry, VfsNodeAttr, VfsNodeOps, VfsNodeRef, VfsNodeType};
 use axfs_vfs::{VfsError, VfsResult};
+use log::warn;
 use spin::RwLock;
 
 use crate::file::FileNode;
@@ -65,6 +66,16 @@ impl DirNode {
             }
         }
         children.remove(name);
+        Ok(())
+    }
+
+    /// Removes a node by the given name in this directory.
+    pub fn rename_node(&self, old_name: &str, new_name: &str) -> VfsResult {
+        let mut children = self.children.write();
+        let node = children.get(old_name).ok_or(VfsError::NotFound)?;
+        if let Some(node) = children.remove(old_name) {
+            children.insert(new_name.into(), node);
+        };
         Ok(())
     }
 }
@@ -162,6 +173,38 @@ impl VfsNodeOps for DirNode {
             Err(VfsError::InvalidInput) // remove '.' or '..
         } else {
             self.remove_node(name)
+        }
+    }
+
+    /// Renames or moves existing file or directory.
+    fn rename(&self, src_path: &str, _dst_path: &str) -> VfsResult {
+        warn!(
+            "rename path mismatch: src = {}, dst = {}",
+            src_path,
+            _dst_path
+        );
+        
+        let dst_path = _dst_path.rsplit("/").next().unwrap_or("");
+
+        let (src_name, src_rest) = split_path(src_path);
+        let (dst_name, dst_rest) = split_path(dst_path);
+
+        match (src_rest, dst_rest) {
+            (Some(src_next), Some(dst_next)) => {
+                // 递归下降
+                let child = self
+                    .children
+                    .read()
+                    .get(src_name)
+                    .ok_or(VfsError::NotFound)?
+                    .clone();
+                child.rename(src_next, dst_next)
+            },
+            (None, None) => self.rename_node(src_name, dst_name),
+            _ => {
+                
+                Err(VfsError::InvalidInput) // src 与 dst 路径结构不一致
+            }
         }
     }
 
